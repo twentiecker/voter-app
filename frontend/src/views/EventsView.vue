@@ -22,9 +22,9 @@ onMounted(loadPolls);
           Browse demo and user-created votes. Open a card to cast a vote and see the live result page.
         </p>
       </div>
-      <div class="flex gap-2">
+      <div class="flex justify-end gap-2">
         <Button icon="pi pi-refresh" label="Refresh" severity="secondary" outlined :loading="state.loading" @click="loadPolls" />
-        <Button icon="pi pi-plus" label="Create" @click="$router.push('/create')" />
+        <Button v-if="state.user" icon="pi pi-plus" label="Create" @click="$router.push('/create')" />
       </div>
     </div>
 

@@ -1,11 +1,11 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
-import ProgressBar from 'primevue/progressbar';
-import RadioButton from 'primevue/radiobutton';
+import Avatar from 'primevue/avatar';
+import Menu from 'primevue/menu';
 import Toast from 'primevue/toast';
 import { useRoute, useRouter } from 'vue-router';
 import { castVote, createPoll, getPolls, login, register } from './api.js';
@@ -15,6 +15,7 @@ import HomeView from './views/HomeView.vue';
 import EventsView from './views/EventsView.vue';
 import CreateView from './views/CreateView.vue';
 import VoteView from './views/VoteView.vue';
+import UnauthorizedView from './views/UnauthorizedView.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -23,15 +24,53 @@ const {
   actions: { handleLogin, handleRegister, handleLogout },
 } = useVoterApp();
 
+watch(
+  () => state.user,
+  (newUser, oldUser) => {
+    if (!oldUser && newUser) return;
+    if (oldUser && !newUser && route.path === '/create') {
+      router.push('/events');
+    }
+  }
+);
+
 const activeView = computed(() => {
   if (route.path.startsWith('/vote/')) return 'vote';
   const map = {
     '/': 'home',
     '/events': 'explore',
     '/create': 'create',
+    '/unauthorized': 'unauthorized',
   };
   return map[route.path] ?? 'home';
 });
+
+const userInitial = computed(() => state.user?.name?.charAt(0).toUpperCase() || 'U');
+
+const userName = computed(() => state.user?.name || '');
+
+const menu = ref();
+const menuItems = computed(() => [
+  {
+    label: userName.value,
+    items: [
+      {
+        label: 'Create',
+        icon: 'pi pi-plus',
+        command: () => showView('create'),
+      },
+      {
+        label: 'Logout',
+        icon: 'pi pi-sign-out',
+        command: () => handleLogout(),
+      },
+    ],
+  },
+]);
+
+function toggleMenu(event) {
+  menu.value.toggle(event);
+}
 
 function navigate(to) {
   router.push(to);
@@ -63,7 +102,7 @@ function showView(view) {
           </span>
         </button>
 
-        <div class="grid grid-cols-3 gap-2 rounded-lg bg-slate-100 p-1">
+        <div class="grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1">
           <button
             v-for="item in navItems"
             :key="item.key"
@@ -79,12 +118,14 @@ function showView(view) {
 
         <div class="flex items-center gap-3">
           <template v-if="state.user">
-            <span class="hidden items-center gap-3 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 sm:flex">
-              <i class="pi pi-user text-slate-500"></i>
-              <span>{{ state.user.name }}</span>
-              <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">{{ state.user.role }}</span>
-            </span>
-            <Button label="Logout" severity="secondary" class="cursor-pointer" @click="handleLogout" />
+            <div class="relative">
+              <Menu ref="menu" :model="menuItems" popup />
+              <button type="button" class="flex items-center gap-2.5 rounded-full border border-slate-200 bg-white pl-1 pr-3 py-1 shadow-sm transition hover:shadow-md cursor-pointer" @click="toggleMenu">
+                <Avatar :label="userInitial" shape="circle" size="normal" class="bg-slate-950 text-emerald-300" style="font-size: 1rem; font-weight: 600;" />
+                <span class="text-sm font-semibold text-slate-800 max-w-[6rem] truncate">{{ userName }}</span>
+                <i class="pi pi-chevron-down text-xs text-slate-500"></i>
+              </button>
+            </div>
           </template>
           <template v-else>
             <Button label="Login" class="cursor-pointer" @click="state.showLoginDialog = true" />
@@ -136,5 +177,6 @@ function showView(view) {
     <EventsView v-else-if="activeView === 'explore'" />
     <CreateView v-else-if="activeView === 'create'" />
     <VoteView v-else-if="activeView === 'vote'" />
+    <UnauthorizedView v-else-if="activeView === 'unauthorized'" />
   </main>
 </template>

@@ -4,6 +4,7 @@ import { useVoterApp } from '../composables/useVoterApp.js';
 
 const {
   state,
+  canCreatePoll,
   actions: { submitCreatePoll, resetCreateForm, addCandidate, removeCandidate },
 } = useVoterApp();
 </script>
@@ -60,7 +61,7 @@ const {
       </div>
 
       <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Button class="w-full sm:w-auto" icon="pi pi-save" label="Save vote" type="submit" :loading="state.creating" :disabled="!state.canCreatePoll" />
+        <Button class="w-full sm:w-auto" icon="pi pi-save" label="Save vote" type="submit" :loading="state.creating" :disabled="!canCreatePoll" />
         <Button class="w-full sm:w-auto" icon="pi pi-refresh" label="Reset" type="button" severity="secondary" outlined @click="resetCreateForm" />
         <p v-if="state.createError" class="text-sm font-medium text-red-600">{{ state.createError }}</p>
       </div>

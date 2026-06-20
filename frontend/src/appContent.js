@@ -46,5 +46,4 @@ export const faqs = [
 export const navItems = [
   { key: 'home', label: 'Home', icon: 'pi pi-home', to: '/' },
   { key: 'explore', label: 'Events', icon: 'pi pi-compass', to: '/events' },
-  { key: 'create', label: 'Create', icon: 'pi pi-plus-circle', to: '/create' },
 ];

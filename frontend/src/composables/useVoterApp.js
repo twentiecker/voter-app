@@ -1,6 +1,6 @@
-import { computed, reactive } from 'vue';
-import { useToast } from 'primevue/usetoast';
-import { castVote, createPoll, getPolls, login, register } from '../api.js';
+import { computed, reactive } from "vue";
+import { useToast } from "primevue/usetoast";
+import { castVote, createPoll, getPolls, login, register } from "../api.js";
 
 const state = reactive({
   loading: true,
@@ -8,27 +8,29 @@ const state = reactive({
   creating: false,
   polls: [],
   poll: null,
-  selectedPollId: '',
-  selectedCandidateId: '',
-  lastVotedCandidateId: '',
-  error: '',
-  createError: '',
+  selectedPollId: "",
+  selectedCandidateId: "",
+  lastVotedCandidateId: "",
+  error: "",
+  createError: "",
   user: null,
   loggingIn: false,
   registering: false,
-  loginForm: { username: '', password: '' },
-  registerForm: { username: '', password: '', name: '' },
+  loginForm: { username: "", password: "" },
+  registerForm: { username: "", password: "", name: "" },
   showLoginDialog: false,
-  authMode: 'login',
+  authMode: "login",
   createForm: {
-    title: '',
-    description: '',
+    title: "",
+    description: "",
     candidates: [
-      { name: '', party: '', slogan: '' },
-      { name: '', party: '', slogan: '' },
+      { name: "", party: "", slogan: "" },
+      { name: "", party: "", slogan: "" },
     ],
   },
 });
+
+export { state };
 
 export function useVoterApp() {
   const toast = useToast();
@@ -38,15 +40,28 @@ export function useVoterApp() {
   const canCreatePoll = computed(() => {
     const title = state.createForm.title.trim();
     const description = state.createForm.description.trim();
-    const completeCandidates = state.createForm.candidates.filter((candidate) => {
-      return candidate.name.trim() && candidate.party.trim() && candidate.slogan.trim();
-    });
+    const completeCandidates = state.createForm.candidates.filter(
+      (candidate) => {
+        return (
+          candidate.name.trim() &&
+          candidate.party.trim() &&
+          candidate.slogan.trim()
+        );
+      },
+    );
     return title && description && completeCandidates.length >= 2;
   });
-  const leadingCandidateId = computed(() => leadingCandidateForPoll(state.poll)?.id ?? '');
+  const leadingCandidateId = computed(
+    () => leadingCandidateForPoll(state.poll)?.id ?? "",
+  );
 
   function totalForPoll(nextPoll) {
-    return nextPoll?.candidates.reduce((sum, candidate) => sum + candidate.votes, 0) ?? 0;
+    return (
+      nextPoll?.candidates.reduce(
+        (sum, candidate) => sum + candidate.votes,
+        0,
+      ) ?? 0
+    );
   }
 
   function leadingCandidateForPoll(nextPoll) {
@@ -65,17 +80,21 @@ export function useVoterApp() {
 
   async function loadPolls() {
     state.loading = true;
-    state.error = '';
+    state.error = "";
     try {
       const loadedPolls = await getPolls();
       state.polls = loadedPolls;
       const preferredPollId = state.selectedPollId || loadedPolls[0]?.id;
-      const nextPoll = loadedPolls.find((item) => item.id === preferredPollId) ?? loadedPolls[0] ?? null;
+      const nextPoll =
+        loadedPolls.find((item) => item.id === preferredPollId) ??
+        loadedPolls[0] ??
+        null;
       state.poll = nextPoll;
-      state.selectedPollId = nextPoll?.id ?? '';
-      state.selectedCandidateId = nextPoll?.candidates[0]?.id ?? '';
+      state.selectedPollId = nextPoll?.id ?? "";
+      state.selectedCandidateId = nextPoll?.candidates[0]?.id ?? "";
     } catch (err) {
-      state.error = 'Unable to load votes. Make sure the API server is running.';
+      state.error =
+        "Unable to load votes. Make sure the API server is running.";
     } finally {
       state.loading = false;
     }
@@ -87,29 +106,34 @@ export function useVoterApp() {
     }
     if (!state.user) {
       toast.add({
-        severity: 'warn',
-        summary: 'Sign in required',
-        detail: 'You must sign in before casting a vote.',
+        severity: "warn",
+        summary: "Sign in required",
+        detail: "You must sign in before casting a vote.",
         life: 2600,
       });
       state.showLoginDialog = true;
       return;
     }
     state.voting = true;
-    state.error = '';
+    state.error = "";
     try {
-      const updatedPoll = await castVote(state.poll.id, state.selectedCandidateId);
+      const updatedPoll = await castVote(
+        state.poll.id,
+        state.selectedCandidateId,
+      );
       state.poll = updatedPoll;
-      state.polls = state.polls.map((item) => (item.id === updatedPoll.id ? updatedPoll : item));
+      state.polls = state.polls.map((item) =>
+        item.id === updatedPoll.id ? updatedPoll : item,
+      );
       state.lastVotedCandidateId = state.selectedCandidateId;
       toast.add({
-        severity: 'success',
-        summary: 'Vote counted',
-        detail: 'The poll results have been updated.',
+        severity: "success",
+        summary: "Vote counted",
+        detail: "The poll results have been updated.",
         life: 2400,
       });
     } catch (err) {
-      state.error = 'Your vote could not be submitted. Please try again.';
+      state.error = "Your vote could not be submitted. Please try again.";
     } finally {
       state.voting = false;
     }
@@ -117,16 +141,22 @@ export function useVoterApp() {
 
   async function submitCreatePoll() {
     if (!canCreatePoll.value) {
-      state.createError = 'Add a title, description, and at least two complete choices.';
+      state.createError =
+        "Add a title, description, and at least two complete choices.";
       return;
     }
     state.creating = true;
-    state.createError = '';
+    state.createError = "";
     const payload = {
       title: state.createForm.title.trim(),
       description: state.createForm.description.trim(),
       candidates: state.createForm.candidates
-        .filter((candidate) => candidate.name.trim() && candidate.party.trim() && candidate.slogan.trim())
+        .filter(
+          (candidate) =>
+            candidate.name.trim() &&
+            candidate.party.trim() &&
+            candidate.slogan.trim(),
+        )
         .map((candidate) => ({
           name: candidate.name.trim(),
           party: candidate.party.trim(),
@@ -138,16 +168,17 @@ export function useVoterApp() {
       state.polls = [createdPoll, ...state.polls];
       state.poll = createdPoll;
       state.selectedPollId = createdPoll.id;
-      state.selectedCandidateId = createdPoll.candidates[0]?.id ?? '';
+      state.selectedCandidateId = createdPoll.candidates[0]?.id ?? "";
       resetCreateForm();
       toast.add({
-        severity: 'success',
-        summary: 'Vote created',
-        detail: 'Your new vote is now available in Explore.',
+        severity: "success",
+        summary: "Vote created",
+        detail: "Your new vote is now available in Events.",
         life: 2600,
       });
     } catch (err) {
-      state.createError = 'The vote could not be created. Check the backend server and try again.';
+      state.createError =
+        "The vote could not be created. Check the backend server and try again.";
     } finally {
       state.creating = false;
     }
@@ -155,18 +186,18 @@ export function useVoterApp() {
 
   function resetCreateForm() {
     state.createForm = {
-      title: '',
-      description: '',
+      title: "",
+      description: "",
       candidates: [
-        { name: '', party: '', slogan: '' },
-        { name: '', party: '', slogan: '' },
+        { name: "", party: "", slogan: "" },
+        { name: "", party: "", slogan: "" },
       ],
     };
-    state.createError = '';
+    state.createError = "";
   }
 
   function addCandidate() {
-    state.createForm.candidates.push({ name: '', party: '', slogan: '' });
+    state.createForm.candidates.push({ name: "", party: "", slogan: "" });
   }
 
   function removeCandidate(index) {
@@ -183,17 +214,17 @@ export function useVoterApp() {
     }
     state.poll = nextPoll;
     state.selectedPollId = nextPoll.id;
-    state.selectedCandidateId = nextPoll.candidates[0]?.id ?? '';
-    state.lastVotedCandidateId = '';
-    state.error = '';
+    state.selectedCandidateId = nextPoll.candidates[0]?.id ?? "";
+    state.lastVotedCandidateId = "";
+    state.error = "";
   }
 
   async function handleLogin() {
     if (!state.loginForm.username.trim() || !state.loginForm.password.trim()) {
       toast.add({
-        severity: 'warn',
-        summary: 'Missing fields',
-        detail: 'Enter both username and password.',
+        severity: "warn",
+        summary: "Missing fields",
+        detail: "Enter both username and password.",
         life: 2600,
       });
       return;
@@ -205,20 +236,20 @@ export function useVoterApp() {
         password: state.loginForm.password.trim(),
       });
       state.user = userData;
-      state.loginForm = { username: '', password: '' };
+      state.loginForm = { username: "", password: "" };
       state.showLoginDialog = false;
-      state.authMode = 'login';
+      state.authMode = "login";
       toast.add({
-        severity: 'success',
-        summary: 'Welcome back',
+        severity: "success",
+        summary: "Welcome back",
         detail: `Signed in as ${userData.name}.`,
         life: 2600,
       });
     } catch (err) {
       toast.add({
-        severity: 'error',
-        summary: 'Login failed',
-        detail: 'Invalid username or password.',
+        severity: "error",
+        summary: "Login failed",
+        detail: "Invalid username or password.",
         life: 2600,
       });
     } finally {
@@ -227,11 +258,15 @@ export function useVoterApp() {
   }
 
   async function handleRegister() {
-    if (!state.registerForm.username.trim() || !state.registerForm.password.trim() || !state.registerForm.name.trim()) {
+    if (
+      !state.registerForm.username.trim() ||
+      !state.registerForm.password.trim() ||
+      !state.registerForm.name.trim()
+    ) {
       toast.add({
-        severity: 'warn',
-        summary: 'Missing fields',
-        detail: 'Enter name, username, and password.',
+        severity: "warn",
+        summary: "Missing fields",
+        detail: "Enter name, username, and password.",
         life: 2600,
       });
       return;
@@ -244,20 +279,20 @@ export function useVoterApp() {
         name: state.registerForm.name.trim(),
       });
       state.user = userData;
-      state.registerForm = { username: '', password: '', name: '' };
+      state.registerForm = { username: "", password: "", name: "" };
       state.showLoginDialog = false;
-      state.authMode = 'login';
+      state.authMode = "login";
       toast.add({
-        severity: 'success',
-        summary: 'Account created',
+        severity: "success",
+        summary: "Account created",
         detail: `Welcome, ${userData.name}.`,
         life: 2600,
       });
     } catch (err) {
       toast.add({
-        severity: 'error',
-        summary: 'Registration failed',
-        detail: 'Could not create account. Try a different username.',
+        severity: "error",
+        summary: "Registration failed",
+        detail: "Could not create account. Try a different username.",
         life: 2600,
       });
     } finally {
@@ -267,18 +302,19 @@ export function useVoterApp() {
 
   function handleLogout() {
     state.user = null;
-    state.selectedPollId = '';
+    state.selectedPollId = "";
     state.poll = null;
     toast.add({
-      severity: 'info',
-      summary: 'Signed out',
-      detail: 'You have been logged out.',
+      severity: "info",
+      summary: "Signed out",
+      detail: "You have been logged out.",
       life: 2200,
     });
   }
 
   return {
     state,
+    canCreatePoll,
     actions: {
       loadPolls,
       submitVote,
