@@ -1,177 +1,143 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
-import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
-import InputText from 'primevue/inputtext';
-import Password from 'primevue/password';
-import Avatar from 'primevue/avatar';
-import Menu from 'primevue/menu';
-import Toast from 'primevue/toast';
-import { useRoute, useRouter } from 'vue-router';
-import { castVote, createPoll, getPolls, login, register } from './api.js';
-import { useVoterApp } from './composables/useVoterApp.js';
-import { navItems } from './appContent.js';
-import HomeView from './views/HomeView.vue';
-import EventsView from './views/EventsView.vue';
-import CreateView from './views/CreateView.vue';
-import VoteView from './views/VoteView.vue';
-import UnauthorizedView from './views/UnauthorizedView.vue';
+import { computed, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import Toast from "primevue/toast";
+import { useToast } from "primevue/usetoast";
+import { useAuthStore } from "./stores/auth.js";
+import { usePollStore } from "./stores/polls.js";
+import { navItems } from "./appContent.js";
+import NavBar from "./components/NavBar.vue";
+import AuthDialog from "./components/AuthDialog.vue";
+import HomeView from "./views/HomeView.vue";
+import EventsView from "./views/EventsView.vue";
+import CreateView from "./views/CreateView.vue";
+import VoteView from "./views/VoteView.vue";
+import UnauthorizedView from "./views/UnauthorizedView.vue";
 
 const route = useRoute();
 const router = useRouter();
-const {
-  state,
-  actions: { handleLogin, handleRegister, handleLogout },
-} = useVoterApp();
+const authStore = useAuthStore();
+const pollStore = usePollStore();
+const toast = useToast();
+
+async function handleAuthLogin() {
+  const result = await authStore.handleLogin();
+  if (result?.fieldsMissing) {
+    toast.add({
+      severity: "warn",
+      summary: "Missing fields",
+      detail: "Enter both username and password.",
+      life: 2600,
+    });
+  } else if (!result?.success) {
+    toast.add({
+      severity: "error",
+      summary: "Login failed",
+      detail: result?.error || "Invalid username or password.",
+      life: 2600,
+    });
+  } else {
+    toast.add({
+      severity: "success",
+      summary: "Welcome back",
+      detail: `Signed in as ${result.userData.name}.`,
+      life: 2600,
+    });
+  }
+}
+
+async function handleAuthRegister() {
+  const result = await authStore.handleRegister();
+  if (result?.fieldsMissing) {
+    toast.add({
+      severity: "warn",
+      summary: "Missing fields",
+      detail: "Enter name, username, and password.",
+      life: 2600,
+    });
+  } else if (!result?.success) {
+    toast.add({
+      severity: "error",
+      summary: "Registration failed",
+      detail: result?.error || "Could not create account. Try a different username.",
+      life: 2600,
+    });
+  } else {
+    toast.add({
+      severity: "success",
+      summary: "Account created",
+      detail: `Welcome, ${result.userData.name}.`,
+      life: 2600,
+    });
+  }
+}
+
+function handleLogout() {
+  authStore.handleLogout();
+  toast.add({
+    severity: "info",
+    summary: "Signed out",
+    detail: "You have been logged out.",
+    life: 2200,
+  });
+}
+
+function handleNavClick(view) {
+  if (view === "create") {
+    router.push("/create");
+  } else {
+    const item = navItems.find((i) => i.key === view);
+    router.push(item?.to || "/");
+  }
+}
 
 watch(
-  () => state.user,
+  () => authStore.user,
   (newUser, oldUser) => {
     if (!oldUser && newUser) return;
-    if (oldUser && !newUser && route.path === '/create') {
-      router.push('/events');
+    if (oldUser && !newUser && route.path === "/create") {
+      router.push("/events");
     }
-  }
+  },
 );
 
 const activeView = computed(() => {
-  if (route.path.startsWith('/vote/')) return 'vote';
+  if (route.path.startsWith("/vote/")) return "vote";
   const map = {
-    '/': 'home',
-    '/events': 'explore',
-    '/create': 'create',
-    '/unauthorized': 'unauthorized',
+    "/": "home",
+    "/events": "explore",
+    "/create": "create",
+    "/unauthorized": "unauthorized",
   };
-  return map[route.path] ?? 'home';
+  return map[route.path] ?? "home";
 });
-
-const userInitial = computed(() => state.user?.name?.charAt(0).toUpperCase() || 'U');
-
-const userName = computed(() => state.user?.name || '');
-
-const menu = ref();
-const menuItems = computed(() => [
-  {
-    label: userName.value,
-    items: [
-      {
-        label: 'Create',
-        icon: 'pi pi-plus',
-        command: () => showView('create'),
-      },
-      {
-        label: 'Logout',
-        icon: 'pi pi-sign-out',
-        command: () => handleLogout(),
-      },
-    ],
-  },
-]);
-
-function toggleMenu(event) {
-  menu.value.toggle(event);
-}
-
-function navigate(to) {
-  router.push(to);
-}
-
-function showView(view) {
-  const map = {
-    home: '/',
-    explore: '/events',
-    create: '/create',
-  };
-  router.push(map[view] ?? '/');
-}
 </script>
 
 <template>
   <main class="min-h-screen bg-[#f7f4ec] text-slate-950">
     <Toast />
 
-    <header class="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <nav class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 sm:px-8 lg:px-10">
-        <button type="button" class="flex items-center gap-3 text-left" @click="navigate('/')">
-          <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-950 text-emerald-300">
-            <i class="pi pi-check-square text-lg"></i>
-          </span>
-          <span>
-            <span class="block text-lg font-bold leading-5">Voter App</span>
-            <span class="text-sm text-slate-500">Live poll workspace</span>
-          </span>
-        </button>
+    <NavBar
+      :user="authStore.user"
+      :active-view="activeView"
+      :nav-items="navItems"
+      @login="authStore.openLogin"
+      @logout="handleLogout"
+      @nav-click="handleNavClick"
+    />
 
-        <div class="grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1">
-          <button
-            v-for="item in navItems"
-            :key="item.key"
-            type="button"
-            class="flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition cursor-pointer"
-            :class="activeView === item.key ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-600 hover:text-slate-950'"
-            @click="showView(item.key)"
-          >
-            <i :class="item.icon"></i>
-            <span>{{ item.label }}</span>
-          </button>
-        </div>
-
-        <div class="flex items-center gap-3">
-          <template v-if="state.user">
-            <div class="relative">
-              <Menu ref="menu" :model="menuItems" popup />
-              <button type="button" class="flex items-center gap-2.5 rounded-full border border-slate-200 bg-white pl-1 pr-3 py-1 shadow-sm transition hover:shadow-md cursor-pointer" @click="toggleMenu">
-                <Avatar :label="userInitial" shape="circle" size="normal" class="bg-slate-950 text-emerald-300" style="font-size: 1rem; font-weight: 600;" />
-                <span class="text-sm font-semibold text-slate-800 max-w-[6rem] truncate">{{ userName }}</span>
-                <i class="pi pi-chevron-down text-xs text-slate-500"></i>
-              </button>
-            </div>
-          </template>
-          <template v-else>
-            <Button label="Login" class="cursor-pointer" @click="state.showLoginDialog = true" />
-          </template>
-        </div>
-      </nav>
-    </header>
-
-    <Dialog v-model:visible="state.showLoginDialog" :header="state.authMode === 'login' ? 'Welcome back' : 'Create account'" :style="{ width: '26rem' }">
-      <form v-if="state.authMode === 'login'" class="flex flex-col gap-4" @submit.prevent="handleLogin">
-        <span class="text-sm text-slate-600">Use demo account <span class="font-semibold text-slate-900">admin</span> with any password.</span>
-        <div>
-          <label class="mb-1 block text-sm font-semibold text-slate-900">Username</label>
-          <InputText v-model="state.loginForm.username" class="w-full" placeholder="Enter username" autocomplete="username" />
-        </div>
-        <div>
-          <label class="mb-1 block text-sm font-semibold text-slate-900">Password</label>
-          <Password v-model="state.loginForm.password" class="w-full" placeholder="Enter password" autocomplete="current-password" :feedback="false" toggle-mask />
-        </div>
-        <Button type="submit" label="Sign in" :loading="state.loggingIn" class="w-full cursor-pointer" />
-        <p class="text-center text-sm text-slate-600">
-          Don't have an account?
-          <button type="button" class="font-semibold text-emerald-700 hover:underline cursor-pointer" @click="state.authMode = 'register'">Register</button>
-        </p>
-      </form>
-      <form v-else class="flex flex-col gap-4" @submit.prevent="handleRegister">
-        <span class="text-sm text-slate-600">Create a new voter account.</span>
-        <div>
-          <label class="mb-1 block text-sm font-semibold text-slate-900">Full name</label>
-          <InputText v-model="state.registerForm.name" class="w-full" placeholder="Enter your name" autocomplete="name" />
-        </div>
-        <div>
-          <label class="mb-1 block text-sm font-semibold text-slate-900">Username</label>
-          <InputText v-model="state.registerForm.username" class="w-full" placeholder="Choose a username" autocomplete="username" />
-        </div>
-        <div>
-          <label class="mb-1 block text-sm font-semibold text-slate-900">Password</label>
-          <Password v-model="state.registerForm.password" class="w-full" placeholder="Create a password" autocomplete="new-password" :feedback="false" toggle-mask />
-        </div>
-        <Button type="submit" label="Create account" :loading="state.registering" class="w-full cursor-pointer" />
-        <p class="text-center text-sm text-slate-600">
-          Already have an account?
-          <button type="button" class="font-semibold text-emerald-700 hover:underline cursor-pointer" @click="state.authMode = 'login'">Sign in</button>
-        </p>
-      </form>
-    </Dialog>
+    <AuthDialog
+      :visible="authStore.showLoginDialog"
+      :auth-mode="authStore.authMode"
+      :login-form="authStore.loginForm"
+      :register-form="authStore.registerForm"
+      :logging-in="authStore.loggingIn"
+      :registering="authStore.registering"
+      @login="handleAuthLogin"
+      @register="handleAuthRegister"
+      @update:visible="(v) => (authStore.showLoginDialog = v)"
+      @switch-mode="(mode) => (authStore.authMode = mode)"
+    />
 
     <HomeView v-if="activeView === 'home'" />
     <EventsView v-else-if="activeView === 'explore'" />

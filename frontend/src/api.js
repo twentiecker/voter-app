@@ -1,63 +1,58 @@
+import axios from "axios";
+
 const configuredUrl = import.meta.env.VITE_API_URL;
 const API_URL = configuredUrl ? configuredUrl.replace(/\/$/, "") : "/api";
 
-async function request(path, options = {}) {
-  const response = await fetch(`${API_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-    ...options,
-  });
+const client = axios.create({ baseURL: API_URL });
 
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || `Request failed with ${response.status}`);
+client.interceptors.request.use((config) => {
+  const cachedUser = JSON.parse(localStorage.getItem("voter_user") || "null");
+  if (cachedUser?.id) {
+    config.headers.Authorization = `Bearer ${cachedUser.id}`;
   }
+  return config;
+});
 
-  return response.json();
-}
+client.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const message =
+      error.response?.data?.detail ??
+      error.response?.data?.message ??
+      error.message ??
+      "Request failed";
+    return Promise.reject(new Error(message));
+  },
+);
 
 export function getPolls() {
-  return request("/polls");
+  return client.get("/polls").then((res) => res.data);
 }
 
 export function createPoll(payload, user) {
-  return request("/polls", {
-    method: "POST",
-    body: JSON.stringify(payload),
-    headers: user
-      ? {
-          Authorization: `Bearer ${user.id}`,
-          "Content-Type": "application/json",
-        }
-      : {},
-  });
+  return client
+    .post("/polls", payload, {
+      headers: {
+        Authorization: `Bearer ${user?.id}`,
+      },
+    })
+    .then((res) => res.data);
 }
 
 export function castVote(pollId, candidateId, user) {
-  return request(`/polls/${pollId}/vote`, {
-    method: "POST",
-    body: JSON.stringify({ candidate_id: candidateId }),
-    headers: user
-      ? {
-          Authorization: `Bearer ${user.id}`,
-          "Content-Type": "application/json",
-        }
-      : {},
-  });
+  return client
+    .post(`/polls/${pollId}/vote`, { candidate_id: candidateId }, {
+      headers: {
+        Authorization: `Bearer ${user?.id}`,
+      },
+    })
+    .then((res) => res.data);
 }
 
 export function login(payload) {
-  return request("/login", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  return client.post("/login", payload).then((res) => res.data);
 }
 
 export function register(payload) {
-  return request("/register", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
+  return client.post("/register", payload).then((res) => res.data);
 }

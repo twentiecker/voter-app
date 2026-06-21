@@ -26,14 +26,31 @@ voter-app/
 │   │   ├── schemas.py # Pydantic request/response schemas
 │   │   └── database.py # Database configuration
 │   └── requirements.txt
-└── frontend/         # Vue 3 SPA
+└── frontend/         # Vue 3 SPA (modular architecture)
     ├── src/
     │   ├── main.js           # App entry point
-    │   ├── App.vue           # Root component with layout
+    │   ├── App.vue           # Root layout with component orchestration
     │   ├── api.js            # API client functions
-    │   ├── router/           # Vue Router configuration
-    │   ├── views/            # Page components
-    │   └── composables/      # Reusable state logic
+    │   ├── appContent.js     # Static content (features, FAQs, nav items)
+    │   ├── router/
+    │   │   └── index.js      # Vue Router with auth guard
+    │   ├── components/       # Reusable UI components
+    │   │   ├── AuthDialog.vue
+    │   │   ├── NavBar.vue
+    │   │   ├── PollCard.vue
+    │   │   ├── CandidateCard.vue
+    │   │   ├── CandidateForm.vue
+    │   │   └── CandidateResult.vue
+    │   ├── composables/      # Focused state management modules
+    │   │   ├── useAuth.js    # Authentication logic
+    │   │   ├── usePolls.js   # Poll/voting logic
+    │   │   └── useVoterApp.js # Combined entry point
+    │   └── views/            # Page components
+    │       ├── HomeView.vue
+    │       ├── EventsView.vue
+    │       ├── CreateView.vue
+    │       ├── VoteView.vue
+    │       └── UnauthorizedView.vue
     └── package.json
 ```
 
@@ -49,40 +66,87 @@ voter-app/
 - **PrimeVue 4** (UI components)
 - **Tailwind CSS 4** (Styling)
 
-### State Management
+### Refactored Architecture
 
-The application uses a single composable pattern in `src/composables/useVoterApp.js`:
+The frontend has been modularized using a composable-based architecture:
 
+```
+frontend/src/
+├── main.js                 # App entry point
+├── App.vue                 # Root layout with view routing
+├── api.js                  # API client functions
+├── appContent.js           # Static content (nav items, features, FAQs)
+├── router/
+│   └── index.js           # Vue Router with auth guard
+├── components/             # Reusable UI components
+│   ├── AuthDialog.vue     # Login/register modal
+│   ├── NavBar.vue         # Navigation header
+│   ├── PollCard.vue       # Poll listing card
+│   ├── CandidateCard.vue  # Candidate preview card
+│   ├── CandidateForm.vue  # Form for poll choices
+│   └── CandidateResult.vue  # Vote result display
+└── views/                  # Page components
+    ├── HomeView.vue
+    ├── EventsView.vue
+    ├── CreateView.vue
+    ├── VoteView.vue
+    └── UnauthorizedView.vue
+```
+
+### State Management (Composables)
+
+State is split into focused composables following separation of concerns:
+
+| Composable | Purpose |
+|------------|---------|
+| `useAuth.js` | Authentication state (user, login/register forms, session) |
+| `usePolls.js` | Poll state (polls, voting, creating) |
+| `useVoterApp.js` | Combined entry point for backward compatibility |
+
+**useAuth.js:**
 ```javascript
-// Reactive state container
-const state = reactive({
-  loading, voting, creating, polls, poll,
-  user, loginForm, registerForm, createForm,
-  // ... more state
+const authState = reactive({
+  user: null,
+  loginForm: { username, password },
+  registerForm: { username, password, name },
+  showLoginDialog: false,
+  authMode: "login",
 })
 
-// Computed properties
-const canCreatePoll = computed(() => ...)
-const totalVotes = computed(() => ...)
-const leadingCandidateId = computed(() => ...)
+// Actions: handleLogin, handleRegister, handleLogout, openLogin
+```
 
-// Actions
-const actions = {
-  loadPolls, submitVote, submitCreatePoll,
-  handleLogin, handleRegister, handleLogout,
-  // ... more actions
-}
+**usePolls.js:**
+```javascript
+const pollState = reactive({
+  polls: [],
+  poll: null,
+  selectedPollId: "",
+  createForm: { title, description, candidates },
+  loading: false,
+  voting: false,
+  creating: false,
+})
+
+// Actions: loadPolls, submitVote, submitCreatePoll, selectPoll
+// Computed: canCreatePoll, totalVotes, leadingCandidateId
 ```
 
 ### Component Structure
 
 | File | Purpose |
 |------|---------|
-| `App.vue` | Root layout, navigation, auth dialogs |
-| `views/HomeView.vue` | Landing page with features/stats |
-| `views/EventsView.vue` | Poll listing page |
-| `views/CreateView.vue` | Create new poll form |
-| `views/VoteView.vue` | Voting interface + live results |
+| `App.vue` | Root layout, orchestrates NavBar + AuthDialog + views |
+| `components/NavBar.vue` | Navigation bar with user menu |
+| `components/AuthDialog.vue` | Authentication modal (login/register) |
+| `components/PollCard.vue` | Poll preview card in events list |
+| `components/CandidateCard.vue` | Candidate preview in poll card |
+| `components/CandidateForm.vue` | Form fields for poll choices |
+| `components/CandidateResult.vue` | Vote result bar display |
+| `views/HomeView.vue` | Landing page |
+| `views/EventsView.vue` | Poll listing |
+| `views/CreateView.vue` | Create poll form |
+| `views/VoteView.vue` | Voting interface |
 | `views/UnauthorizedView.vue` | Auth required page |
 
 ### Routing

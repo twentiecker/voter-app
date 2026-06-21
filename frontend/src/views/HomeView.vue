@@ -1,16 +1,17 @@
 <script setup>
-import Button from 'primevue/button';
-import { useVoterApp } from '../composables/useVoterApp.js';
-import { features, processSteps, faqs, platformStats } from '../appContent.js';
-import { onMounted } from 'vue';
+import { onMounted } from "vue";
+import Button from "primevue/button";
+import { useToast } from "primevue/usetoast";
+import { usePollStore } from "../stores/polls.js";
+import { useAuthStore } from "../stores/auth.js";
+import { features, processSteps, faqs, platformStats } from "../appContent.js";
 
-const {
-  state,
-  actions: { loadPolls },
-} = useVoterApp();
+const pollStore = usePollStore();
+const authStore = useAuthStore();
+const toast = useToast();
 
 onMounted(() => {
-  loadPolls();
+  pollStore.loadPolls();
 });
 </script>
 
@@ -45,7 +46,7 @@ onMounted(() => {
             <div class="flex items-center justify-between gap-4 border-b border-slate-200 pb-4">
               <div>
                 <p class="text-sm font-semibold text-emerald-700">Live preview</p>
-                <h2 class="mt-1 text-xl font-bold">Community Project Vote</h2>
+                <h2 class="mt-1 text-xl font-semibold text-slate-950">Community Project Vote</h2>
               </div>
               <span class="rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-800">Open</span>
             </div>
