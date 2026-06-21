@@ -2,6 +2,8 @@
 
 Simple full-stack voter app with a FastAPI backend and a Vue 3 frontend using Tailwind CSS v4 and PrimeVue v4.
 
+See [DOCS.md](DOCS.md) for comprehensive documentation.
+
 ## Project Structure
 
 ```text

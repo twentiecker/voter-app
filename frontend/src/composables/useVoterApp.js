@@ -120,6 +120,7 @@ export function useVoterApp() {
       const updatedPoll = await castVote(
         state.poll.id,
         state.selectedCandidateId,
+        state.user,
       );
       state.poll = updatedPoll;
       state.polls = state.polls.map((item) =>
@@ -133,13 +134,27 @@ export function useVoterApp() {
         life: 2400,
       });
     } catch (err) {
-      state.error = "Your vote could not be submitted. Please try again.";
+      if (err.message?.includes("Already voted")) {
+        state.error = "You have already voted in this poll.";
+      } else {
+        state.error = "Your vote could not be submitted. Please try again.";
+      }
     } finally {
       state.voting = false;
     }
   }
 
   async function submitCreatePoll() {
+    if (!state.user) {
+      toast.add({
+        severity: "warn",
+        summary: "Sign in required",
+        detail: "You must sign in before creating a poll.",
+        life: 2600,
+      });
+      state.showLoginDialog = true;
+      return;
+    }
     if (!canCreatePoll.value) {
       state.createError =
         "Add a title, description, and at least two complete choices.";
@@ -164,7 +179,7 @@ export function useVoterApp() {
         })),
     };
     try {
-      const createdPoll = await createPoll(payload);
+      const createdPoll = await createPoll(payload, state.user);
       state.polls = [createdPoll, ...state.polls];
       state.poll = createdPoll;
       state.selectedPollId = createdPoll.id;
@@ -177,8 +192,18 @@ export function useVoterApp() {
         life: 2600,
       });
     } catch (err) {
-      state.createError =
-        "The vote could not be created. Check the backend server and try again.";
+      if (err.message?.includes("Not authenticated") || err.message?.includes("User not found")) {
+        toast.add({
+          severity: "warn",
+          summary: "Session expired",
+          detail: "Please sign in again.",
+          life: 2600,
+        });
+        state.user = null;
+      } else {
+        state.createError =
+          "The vote could not be created. Check the backend server and try again.";
+      }
     } finally {
       state.creating = false;
     }
